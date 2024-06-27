@@ -10,7 +10,7 @@ class Conversation extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'external_id', 'started_at', 'ended_at',
+        'user_id', 'external_id',
     ];
 
     public function user()
