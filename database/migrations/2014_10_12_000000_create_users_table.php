@@ -15,7 +15,6 @@ class CreateUsersTable extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
-            $table->timestamp('registered_at')->useCurrent(); // ユーザー登録日
             $table->timestamp('last_login_at')->nullable(); // 最終ログイン日時
             $table->timestamps();
         });
