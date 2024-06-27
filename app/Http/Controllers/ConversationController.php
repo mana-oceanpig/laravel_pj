@@ -3,68 +3,83 @@
 namespace App\Http\Controllers;
 
 use App\Models\Conversation;
-use App\Services\AIService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log; 
 
 class ConversationController extends Controller
 {
-    protected $openAIService;
-
-    public function __construct(OpenAIService $openAIService)
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
     {
-        $this->openAIService = $openAIService;
-    }
-    
-    public function handle(Request $request)
-    {
-        try {
-            $request->validate([
-                'text' => 'required|string|max:1000',
-                ]);
-            $text = $request->input('text');
-            
-            // 100文字以上の場合は要約
-            $summarizedText = $this->openAIService->summarizeText($text);
-            
-            // ChatGPTの応答を生成
-            $responseText = $this->openAIService->generateResponse($summarizedText);
-            
-            //データベースに保存
-            $response = new Response();
-            $response->original_text = $text;
-            $response->summarized_text = $summarizedText;
-            $response->ai_response = $responseText;
-            $response->save();
-            
-            return reponse()->json([
-                'response' => $responseText,
-                'summarizedText' => $summarizedText,
-                'timestamp' => now()->format('m/d H:i')
-                ]);
-                
-        } catch (Exception $e) {
-            //エラーメッセージをログに記録
-            Log::error($e->getMessage());
-            
-            return response()->json(['error' => 'Failed to load conversation history'], 500);
-        }
-    }
-    public function getConversationHistory()
-    {
-        // ログインしているユーザーの会話履歴を取得
-        $responses = Response::where('user_id', Auth::id())->get();
+        $conversations = Conversation::where('user_id', Auth::id())
+            ->with('lastMessage')
+            ->orderBy('updated_at', 'desc')
+            ->get();
 
-        // 必要なデータだけを抽出して返す
-        $history = $responses->map(function($response) {
-            return [
-                'sender' => Auth::user()->name,
-                'text' => $response->original_text,
-                'response' => $response->ai_response,
-                'timestamp' => $response->created_at->format('H:i:s'),
-            ];
-        });
-
-        return response()->json($history);
+        return view('conversations', [
+            'conversations' => $conversationss
+        ]);
     }
 
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        $conversation = Conversation::create([
+            'user_id' => Auth::id(),
+            'external_id' => uniqid('conv_', true),
+        ]);
+
+        return view('conversation.create');
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $conversation = new Conversation();
+        $conversation->user_id = Auth::id();
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Conversation $conversation)
+    {
+        return view('conversation.show', compact('conversation'));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Conversation $conversation)
+    {
+        return view('conversation.edit', compact('conversation'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    //アップデートファンクションは必要なのか？新しい会話を始めるだけで良いのでは？
+
+    // public function update(Request $request, Conversation $conversation) 
+    // {
+    //     $conversation = Conversation::where('user_id', Auth::id())->findOrFail($id);
+    //     $conversation->update($request->only(''));
+    // }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Conversation $conversation)
+    {
+        $conversation->delete();      
+        return redirect('/');  
+    }
 }
