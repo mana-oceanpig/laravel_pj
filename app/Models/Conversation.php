@@ -12,6 +12,11 @@ class Conversation extends Model
     protected $fillable = [
         'user_id', 'external_id',
     ];
+    
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
     public function user()
     {
@@ -20,6 +25,11 @@ class Conversation extends Model
 
     public function messages()
     {
-        return $this->hasMany(ConversationMessage::class);
+        return $this->hasMany(ConversationMessage::class)->orderBy('created_at');
+    }
+    
+    public function lastMessage()
+    {
+        return $this->hasOne(ConversationMessage::class)->latest();
     }
 }

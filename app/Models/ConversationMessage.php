@@ -11,11 +11,23 @@ class ConversationMessage extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'conversation_id', 'role_id', 'message', 'is_hidden',
+        'conversation_id', 'role_id', 'message', 'summarized_text', 'is_hidden',
+    ];
+
+    protected $casts = [
+        'is_hidden' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function conversation()
     {
         return $this->belongsTo(Conversation::class);
     }
+    
+    public function scopeVisible($query)
+    {
+        return $query->where('is_hidden', false);
+    }
+    
 }
