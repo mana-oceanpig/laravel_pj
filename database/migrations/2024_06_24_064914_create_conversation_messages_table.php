@@ -12,6 +12,7 @@ class CreateConversationMessagesTable extends Migration
             $table->id();
             $table->foreignId('conversation_id')->constrained()->onDelete('cascade'); // 会話IDへの外部キー
             $table->text('message'); // メッセージ本文
+            $table->text('summarized_text')->nullable();
             $table->boolean('is_hidden')->default(false); // メッセージが隠されているかどうか
             $table->tinyInteger('role_id');
             $table->timestamps(); // created_at と updated_at を自動追加
