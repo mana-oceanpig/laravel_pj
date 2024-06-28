@@ -24,11 +24,11 @@ class ConversationMessageController extends Controller
         try {
             $validatedData = $this->validateRequest($request);
             $conversation = $this->getOrCreateConversation();
-            $summarizedText = $this->summarizeText($validatedData['text']);
-            $responseText = $this->generateResponse($summarizedText);
-            $conversationMessage = $this->saveConversationMessage($conversation->id, $validatedData['text'], $summarizedText, $responseText);
+            $summary = $this->summary($validatedData['text']);
+            $responseText = $this->generateResponse($summary);
+            $conversationMessage = $this->saveConversationMessage($conversation->id, $validatedData['text'], $summary, $responseText);
             
-            return $this->successResponse($responseText, $summarizedText, $conversationMessage);
+            return $this->successResponse($responseText, $summary, $conversationMessage);
         } catch (Exception $e) {
             return $this->errorResponse($e);
         }
@@ -59,9 +59,9 @@ class ConversationMessageController extends Controller
         return $conversation;
     }
 
-    private function summarizeText($text)
+    private function summary($text)
     {
-        return strlen($text) > 100 ? $this->openAIService->summarizeText($text) : $text;
+        return strlen($text) > 100 ? $this->openAIService->summary($text) : $text;
     }
 
     private function generateResponse($text)
@@ -69,13 +69,13 @@ class ConversationMessageController extends Controller
         return $this->openAIService->generateResponse($text);
     }
 
-    private function saveConversationMessage($conversationId, $text, $summarizedText, $responseText)
+    private function saveConversationMessage($conversationId, $text, $summary, $responseText)
     {
         $userMessage = ConversationMessage::create([
             'conversation_id' => $conversationId,
             'role_id' => config('conversation.user_role_id'),
             'message' => $text,
-            'summarized_text' => $summarizedText,
+            'summary' => $summary,
         ]);
 
         $aiMessage = ConversationMessage::create([
@@ -87,11 +87,11 @@ class ConversationMessageController extends Controller
         return [$userMessage, $aiMessage];
     }
 
-    private function successResponse($responseText, $summarizedText, $conversationMessages)
+    private function successResponse($responseText, $summary, $conversationMessages)
     {
         return response()->json([
             'response' => $responseText,
-            'summarizedText' => $summarizedText,
+            'summary' => $summary,
             'timestamp' => now()->format('Y-m-d H:i:s'),
             'conversation_id' => $conversationMessages[0]->conversation_id,
             'user_message_id' => $conversationMessages[0]->id,
@@ -124,7 +124,7 @@ class ConversationMessageController extends Controller
                         'id' => $message->id,
                         'role' => $message->role_id == config('conversation.user_role_id') ? 'user' : 'ai',
                         'text' => $message->message,
-                        'summarized_text' => $message->summarized_text,
+                        'summary' => $message->summary,
                         'timestamp' => $message->created_at->format('Y-m-d H:i:s'),
                     ];
                 }),

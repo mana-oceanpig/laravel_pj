@@ -11,7 +11,7 @@ class ConversationMessage extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'conversation_id', 'role_id', 'message', 'summarized_text', 'is_hidden',
+        'conversation_id', 'role_id', 'message', 'summary', 'is_hidden',
     ];
 
     protected $casts = [
@@ -19,6 +19,7 @@ class ConversationMessage extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+    
 
     public function conversation()
     {

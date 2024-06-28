@@ -4,13 +4,14 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateReportsTable extends Migration
+class CreateConversationReportsTable extends Migration
 {
     public function up()
     {
-        Schema::create('reports', function (Blueprint $table) {
+        Schema::create('conversation_reports', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // ユーザーIDへの外部キー
+            $table->foreignId('conversation_id')->constrained()->onDelete('cascade'); // conversation IDへの外部キー
             $table->text('summary'); // 結果サマリ
             $table->float('serotonin'); // セロトニンの値
             $table->float('dopamine'); // ドーパミンの値

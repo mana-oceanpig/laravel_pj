@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Report extends Model
+class ConversationReport extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'summary', 'serotonin', 'dopamine', 'oxytocin', 'recommendations', 'pdf_path',
+        'user_id', 'conversation_id', 'summary', 'serotonin', 'dopamine', 'oxytocin', 'recommendations', 'pdf_path',
     ];
 
     public function user()
