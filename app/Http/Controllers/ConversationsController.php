@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log; 
 
-class ConversationController extends Controller
+class ConversationsController extends Controller
 {
     /**
      * Display a listing of the resource.

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
-class ConversationMessageController extends Controller
+class ConversationMessagesController extends Controller
 {
     protected $openAIService;
 

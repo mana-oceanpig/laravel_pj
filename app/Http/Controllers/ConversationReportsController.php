@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Report;
+use App\Models\ConversationReport;
 use App\Services\ReportGenerationService;
 use App\Exports\ReportExport;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
-class ConversationReportController extends Controller
+class ConversationReportsController extends Controller
 {
     protected $reportGenerationService;
 
