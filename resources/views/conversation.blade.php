@@ -23,7 +23,7 @@
             <label for="message">メッセージ:</label>
             <textarea id="message" name="message" required></textarea>
         </div>
-        <button type="submit" class="btn btn-primary">送信</button>
+        <button method="POST" type="submit" class="btn btn-primary">送信</button>
     </form>
 </div>
 @endsection
