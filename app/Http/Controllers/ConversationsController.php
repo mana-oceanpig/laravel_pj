@@ -15,13 +15,13 @@ class ConversationsController extends Controller
      */
     public function index()
     {
-        $conversations = Conversation::where('user_id', Auth::id())
+        $conversation= Conversation::where('user_id', Auth::id())
             ->with('lastMessage')
             ->orderBy('updated_at', 'desc')
             ->get();
 
         return view('conversations', [
-            'conversations' => $conversationss
+            'conversations' => $conversation
         ]);
     }
 
@@ -31,20 +31,30 @@ class ConversationsController extends Controller
     public function create()
     {
         $conversation = Conversation::create([
-            'user_id' => Auth::id(),
+            'users_id' => Auth::id(),
             'external_id' => uniqid('conv_', true),
         ]);
 
         return view('conversation.create');
-    }
+}
 
     /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
     {
-        $conversation = new Conversation();
-        $conversation->user_id = Auth::id();
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'initial_message' => 'required|string',
+        ]);
+        
+        $conversation = Conversation::create([
+        'users_id' => Auth::id(),
+        'external_id' => uniqid('conv_', true),
+        ]);
+
+        return redirect('/conversations');
+  
     }
 
     /**
