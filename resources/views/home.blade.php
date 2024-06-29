@@ -175,7 +175,7 @@
             <div class="container">
                 <h1>LuminaMind</h1>
                 <p>AIカウンセリングで心の健康をサポート</p>
-                <a href="conversation" class="cta-button">今すぐ始める</a>
+                <a href="conversations" class="cta-button">今すぐ始める</a>
             </div>
         </section>
         <section id="about" class="about">
