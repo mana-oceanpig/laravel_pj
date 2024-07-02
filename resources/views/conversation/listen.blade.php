@@ -3,10 +3,11 @@
 @section('content')
     <h1>今日の対話 - ID: {{ $conversation->id }}</h1>
     
-    <div id="messages-container">
-        @foreach($messages as $message)
+    <div id="messages-container" style="max-height: 400px; overflow-y: auto;">
+        @foreach($messages->reverse() as $message)
             <div class="message">
-                <strong>{{ $message->sender }}:</strong> {{ $message->content }}
+                <strong>{{ $conversation->user_id }}:</strong> {{ $message->message }}
+                <small class="text-muted">{{ $message->created_at->format('Y-m-d H:i:s') }}</small>
             </div>
         @endforeach
     </div>
