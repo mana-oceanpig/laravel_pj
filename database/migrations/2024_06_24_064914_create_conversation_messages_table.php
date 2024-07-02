@@ -11,6 +11,7 @@ class CreateConversationMessagesTable extends Migration
         Schema::create('conversation_messages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('conversation_id')->constrained()->onDelete('cascade'); // 会話IDへの外部キー
+            $table->string('external_id')->nullable();
             $table->text('message'); // メッセージ本文
             $table->text('summary')->nullable();
             $table->boolean('is_hidden')->default(false); // メッセージが隠されているかどうか
