@@ -7,7 +7,7 @@ use App\Models\ConversationMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Log; 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Carbon\Carbon;
 
@@ -47,6 +47,7 @@ class ConversationsController extends Controller
         public function store(Request $request)
     {
         $conversation = Conversation::create([
+            'user_id' => Auth::id(),
             'status' => Conversation::STATUS_IN_PROGRESS,
             'last_activity_at' => Carbon::now(),
         ]);

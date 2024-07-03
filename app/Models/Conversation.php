@@ -10,6 +10,7 @@ class Conversation extends Model
 {
     use HasFactory;
     
+    
     protected $dates = [
     'created_at',
     'updated_at',
@@ -21,7 +22,7 @@ class Conversation extends Model
     const STATUS_CANCELED = 'canceled';
     const STATUS_COMPLETED = 'completed';
 
-    protected $fillable = ['status', 'last_activity_at'];
+    protected $fillable = ['user_id', 'status', 'last_activity_at'];
 
     public function messages()
     {
