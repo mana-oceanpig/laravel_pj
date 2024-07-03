@@ -1,9 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1>会話一覧</h1>
+    <h1>ようこそ</h1>
+    <h2>対話一覧</h2>
     
-    <a href="{{ route('conversations.start') }}" class="btn btn-primary">新しい会話を開始</a>
+    <a href="{{ route('conversations.start') }}" class="btn btn-primary">新しい対話を開始</a>
 
     <table class="table mt-3">
         <thead>
@@ -23,16 +24,16 @@
                     <td>
                         <a href="{{ route('conversations.show', $conversation->id) }}" class="btn btn-sm btn-info">詳細</a>
                         @if($conversation->status === App\Models\Conversation::STATUS_IN_PROGRESS)
-                            <a href="{{ route('conversations.listen', $conversation->id) }}" class="btn btn-sm btn-primary">リッスン</a>
+                            <a href="{{ route('conversations.listen', $conversation->id) }}" class="btn btn-sm btn-primary">対話を再開</a>
                             <form action="{{ route('conversations.complete', $conversation->id) }}" method="POST" style="display: inline;">
                                 @csrf
                                 @method('PATCH')
-                                <button type="submit" class="btn btn-sm btn-success">完了</button>
+                                <button type="submit" class="btn btn-sm btn-success">対話を完了</button>
                             </form>
                             <form action="{{ route('conversations.cancel', $conversation->id) }}" method="POST" style="display: inline;">
                                 @csrf
                                 @method('PATCH')
-                                <button type="submit" class="btn btn-sm btn-warning">キャンセル</button>
+                                <button type="submit" class="btn btn-sm btn-warning">対話をキャンセル</button>
                             </form>
                         @endif
                     </td>

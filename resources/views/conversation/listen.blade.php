@@ -6,7 +6,7 @@
     <div id="messages-container" style="max-height: 400px; overflow-y: auto;">
         @foreach($messages->reverse() as $message)
             <div class="message">
-                <strong>{{ $conversation->user_id }}:</strong> {{ $message->message }}
+                <strong>{{ $conversation->user->name }}:</strong> {{ $message->message }}
                 <small class="text-muted">{{ $message->created_at->format('Y-m-d H:i:s') }}</small>
             </div>
         @endforeach
@@ -22,13 +22,13 @@
 
     <form action="{{ route('conversations.complete', $conversation->id) }}" method="POST" style="display: inline;">
         @csrf
-        <button type="submit" class="btn btn-success">会話を終了</button>
+        <button type="submit" class="btn btn-success">対話を終了</button>
     </form>
 
     <form action="{{ route('conversations.cancel', $conversation->id) }}" method="POST" style="display: inline;">
         @csrf
-        <button type="submit" class="btn btn-warning">会話をキャンセル</button>
+        <button type="submit" class="btn btn-warning">対話をキャンセル</button>
     </form>
 
-    <a href="{{ route('conversations.index') }}" class="btn btn-secondary">会話一覧に戻る</a>
+    <a href="{{ route('conversations.index') }}" class="btn btn-secondary">対話一覧に戻る</a>
 @endsection

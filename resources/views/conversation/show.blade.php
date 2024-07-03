@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1>会話詳細 - ID: {{ $conversation->id }}</h1>
+    <h1>対話詳細 - ID: {{ $conversation->id }}</h1>
 
     <div class="card">
         <div class="card-body">
@@ -16,7 +16,7 @@
     <div id="messages-container">
         @foreach($messages as $message)
             <div class="message">
-                <strong>{{ $message->sender }}:</strong> {{ $message->content }}
+                <strong>{{ $conversation->user->name }}:</strong> {{ $message->message }}
                 <small class="text-muted">{{ optional($message->created_at)->format('Y-m-d H:i:s') }}</small>
             </div>
         @endforeach

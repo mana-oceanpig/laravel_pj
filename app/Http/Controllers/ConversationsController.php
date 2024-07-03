@@ -22,7 +22,15 @@ class ConversationsController extends Controller
 {
     try {
         $conversation = Conversation::findOrFail($id);
-    } catch (ModelNotFoundException $e) {
+    }
+    catch (ModelNotFoundException $e) {
+        Log::error("Conversation with ID $id not found.");
+        abort(404, 'Conversation not found');
+    }
+    try {
+        $conversation = Conversation::with('user', 'messages.user')->findOrFail($id);
+    }
+    catch (ModelNotFoundException $e) {
         Log::error("Conversation with ID $id not found.");
         abort(404, 'Conversation not found');
     }

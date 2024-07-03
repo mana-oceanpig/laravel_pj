@@ -10,7 +10,6 @@ class Conversation extends Model
 {
     use HasFactory;
     
-    
     protected $dates = [
     'created_at',
     'updated_at',
@@ -24,11 +23,14 @@ class Conversation extends Model
 
     protected $fillable = ['user_id', 'status', 'last_activity_at'];
 
+    public function user()
+    {
+    return $this->belongsTo(User::class);
+    }
     public function messages()
     {
         return $this->hasMany(ConversationMessage::class);
     }
-
     public function checkAndUpdateExpired()
     {
         if ($this->status === self::STATUS_IN_PROGRESS) {
