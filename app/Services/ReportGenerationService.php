@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Report;
 
+/**
+ * @deprecated won't use this service class
+ */
 class ReportGenerationService
 {
     protected $aiService;

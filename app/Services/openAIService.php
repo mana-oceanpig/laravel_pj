@@ -5,6 +5,9 @@ namespace App\Services;
 use GuzzleHttp\Client;
 use Exception;
 
+/**
+ * @deprecated won't use this service class
+ */
 class OpenAIService
 {
     protected $client;
