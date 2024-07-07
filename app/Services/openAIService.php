@@ -5,6 +5,9 @@ namespace App\Services;
 use GuzzleHttp\Client;
 use Exception;
 
+/**
+ * @deprecated won't use this service class
+ */
 class OpenAIService
 {
     protected $client;
@@ -13,7 +16,7 @@ class OpenAIService
     public function __construct()
     {
         $this->client = new Client();
-        $this->apiKey = env('OPENAI_API_KEY');
+        $this->apiKey = env('OPENAI_API_SECRET_KEY');
 
         if (empty($this->apiKey)) {
             throw new Exception('OpenAI API key is not set.');
