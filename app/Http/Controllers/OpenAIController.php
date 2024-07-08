@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use OpenAI;
+use App\Models\Conversation;
+use App\Models\ConversationMessage;
+use Illuminate\Support\Facades\Log;
 
 class OpenAIController extends Controller
 {
@@ -41,24 +44,69 @@ class OpenAIController extends Controller
             throw new \Exception('Failed to complete OpenAI job');
         }
 
-        // Retrieve and return the response message
-        $messages = $this->client->threads()->messages()->list(
-            $run->threadId,
-            [
-                'order' => 'desc',
-                'limit' => 1,
-            ]
-        );
+        // Retrieve and handle response
+        $response = $this->handleOpenAIResponse($run->threadId);
+
+        return response()->json(['message' => $response]);
+    }
+
+    private function handleOpenAIResponse($threadId)
+    {
+        // Retrieve messages from the thread
+        $messages = $this->client->threads()->messages()->list($threadId, [
+            'order' => 'desc',
+            'limit' => 1,
+        ]);
 
         foreach ($messages->data as $message) {
             foreach ($message->content as $content) {
                 if ($content->type === 'text') {
-                    return response()->json(['message' => $content->text->value]);
+                    $messageText = $content->text->value;
+
+                    // Check if it's a 'bye' message
+                    if (strtolower($messageText) === 'bye') {
+                        return '会話を終了しました。';
+                    }
+
+                    // Check if it's a 'complete' message
+                    if (strtolower($messageText) === '対話を完了') {
+                        // Update conversation and save summary
+                        $conversationId = $message->conversation_id;
+                        $conversation = Conversation::findOrFail($conversationId);
+                        $this->saveSummary($conversation);
+                        return '会話を完了しました。';
+                    }
+
+                    return $messageText;
                 }
             }
         }
 
-        return response()->json(['message' => 'No response from OpenAI']);
+        return 'No response from OpenAI';
+    }
+
+    private function saveSummary($conversation)
+    {
+        // Generate summary here (example: concatenate messages)
+        $summaryMessage = $this->generateSummary($conversation);
+
+        // Save summary to ConversationMessagesTable
+        $summary = new ConversationMessage();
+        $summary->conversation_id = $conversation->id;
+        $summary->message = $summaryMessage;
+        $summary->role_id = 2; // Assuming this is the agent role
+        $summary->summary = true; // Flag for summary
+        $summary->save();
+
+        // Update agent_status to 'reacted'
+        $conversation->agent_status = 'reacted';
+        $conversation->save();
+    }
+
+    private function generateSummary($conversation)
+    {
+        // Implement logic to generate summary from conversation messages
+        return 'Summary generated here';
     }
 
     private function waitUntilRunCompleted($threadId, $runId)

@@ -5,10 +5,14 @@
     
     <div id="messages-container" style="max-height: 400px; overflow-y: auto;">
         @foreach($messages->reverse() as $message)
-            <div class="message">
-                <strong>{{ $conversation->user->name }}:</strong> {{ $message->message }}
-                <small class="text-muted">{{ $message->created_at->format('Y-m-d H:i:s') }}</small>
+            <div class="message" style="text-align: {{ $message->role_id == 1 ? 'left' : 'right' }};">
+                <div><strong>{{ $message->role_id == 1 ? $conversation->user->name : 'カウンセラー' }}</strong></div>
+                <div>{{ $message->message }}</div>
+                @if ($message->role_id == 1)
+                    <small class="text-muted">{{ $message->created_at->format('Y-m-d H:i:s') }}</small>
+                @endif
             </div>
+            <hr> <!-- Optional: Add a line separator between messages -->
         @endforeach
     </div>
 

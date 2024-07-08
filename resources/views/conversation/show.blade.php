@@ -15,9 +15,10 @@
     <h2 class="mt-4">メッセージ一覧</h2>
     <div id="messages-container">
         @foreach($messages as $message)
-            <div class="message">
-                <strong>{{ $conversation->user->name }}:</strong> {{ $message->message }}
-                <small class="text-muted">{{ optional($message->created_at)->format('Y-m-d H:i:s') }}</small>
+            <div class="message" style="text-align: {{ $message->role_id == 1 ? 'left' : 'right' }};">
+                <div><strong>{{ $message->role_id == 1 ? $conversation->user->name : 'カウンセラー' }}</strong></div>
+                <div>{{ $message->message }}</div>
+                <div><small class="text-muted">{{ optional($message->created_at)->format('Y-m-d H:i:s') }}</small></div>
             </div>
         @endforeach
     </div>
