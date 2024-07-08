@@ -20,8 +20,11 @@ class Conversation extends Model
     const STATUS_EXPIRED = 'expired';
     const STATUS_CANCELED = 'canceled';
     const STATUS_COMPLETED = 'completed';
+    
+    const AGENT_STATUS_THINKING = 'thinking';
+    const AGENT_STATUS_REACTED = 'reacted';
 
-    protected $fillable = ['user_id', 'status', 'last_activity_at'];
+    protected $fillable = ['user_id', 'status', 'last_activity_at', 'agent_status'];
 
     public function user()
     {
@@ -49,6 +52,16 @@ class Conversation extends Model
     public function markAsCanceled()
     {
         $this->update(['status' => self::STATUS_CANCELED]);
+    }
+    
+    public function setAgentStatusThinking()
+    {
+        $this->update(['agent_status' => self::AGENT_STATUS_THINKING]);
+    }
+
+    public function setAgentStatusReacted()
+    {
+        $this->update(['agent_status' => self::AGENT_STATUS_REACTED]);
     }
     
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Conversation;
 use App\Models\ConversationMessage;
+use OpenAI;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -18,24 +19,16 @@ class ConversationsController extends Controller
         $conversations = Conversation::all();
         return view('conversations.index', compact('conversations'));
     }
-        public function show($id)
+       public function show($id)
 {
     try {
-        $conversation = Conversation::findOrFail($id);
-    }
-    catch (ModelNotFoundException $e) {
-        Log::error("Conversation with ID $id not found.");
-        abort(404, 'Conversation not found');
-    }
-    try {
         $conversation = Conversation::with('user', 'messages.user')->findOrFail($id);
-    }
-    catch (ModelNotFoundException $e) {
+    } catch (ModelNotFoundException $e) {
         Log::error("Conversation with ID $id not found.");
         abort(404, 'Conversation not found');
     }
 
-    $messages = ConversationMessage::where('conversation_id', $id)->orderBy('created_at')->get();
+    $messages = $conversation->messages()->orderBy('created_at')->get();
     return view('conversations.show', compact('conversation', 'messages'));
 }
         public function listen($id)
