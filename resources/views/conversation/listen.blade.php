@@ -97,6 +97,10 @@
                         <small class="text-muted">{{ $message->created_at->format('Y-m-d H:i:s') }}</small>
                     </div>
                 @endforeach
+                    <div id="thinking-message" class="message message-counselor" style="display: none;">
+                        <div><strong>カウンセラー</strong></div>
+                    <div>...考え中</div>
+                </div>
             </div>
         </div>
     </div>
@@ -122,4 +126,30 @@
         <a href="{{ route('conversations.index') }}" class="btn btn-outline-secondary rounded-pill px-4 py-2">対話一覧に戻る</a>
     </div>
 </div>
+<script>
+    document.getElementById('message-form').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        // Show the thinking message
+        document.getElementById('thinking-message').style.display = 'block';
+
+        // Disable the submit button
+        document.querySelector('#message-form button[type="submit"]').disabled = true;
+
+        // Submit the form
+        event.target.submit();
+    });
+
+    // Function to scroll to the bottom of the messages container
+    function scrollToBottom() {
+        const messagesContainer = document.getElementById('messages-container');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Scroll to the bottom on page load
+    window.onload = function() {
+        scrollToBottom();
+    };
+</script>
 @endsection
+
