@@ -70,7 +70,7 @@ class ConversationsController extends Controller
 
         // If conversation is already completed
         if ($conversation->status === Conversation::STATUS_COMPLETED) {
-            return redirect()->route('conversations.show', $id)->with('warning', '会話は既に完了しています。');
+            return redirect()->route('conversations.show', $id)->with('warning', '対話は既に完了しています。');
         }
 
         // Complete conversation
@@ -78,14 +78,14 @@ class ConversationsController extends Controller
         $conversation->last_activity_at = Carbon::now();
         $conversation->save();
 
-        return redirect()->route('conversations.show', $id)->with('success', '会話が完了しました。');
+        return redirect()->route('conversations.show', $id)->with('success', '対話が完了しました。');
     }
 
     public function cancel(Request $request, $id)
     {
         $conversation = Conversation::findOrFail($id);
         $conversation->markAsCanceled();
-        return redirect()->route('conversations.show', $id)->with('success', '会話がキャンセルされました。');
+        return redirect()->route('conversations.show', $id)->with('success', '対話がキャンセルされました。');
     }
 
     public function updateLastActivity(Request $request, $id)
@@ -95,4 +95,10 @@ class ConversationsController extends Controller
         $conversation->save();
         return response()->json(['status' => 'success']);
     }
+    public function destroy(Conversation $conversation)
+    {
+    $conversation->delete();
+    return redirect()->route('conversations.index')->with('success', '対話が削除されました。');
+    }
+
 }

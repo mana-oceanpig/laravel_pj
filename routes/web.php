@@ -32,22 +32,25 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
+    
     Route::get('/conversations/start', [ConversationsController::class, 'start'])->name('conversations.start');
-
+    
     Route::get('/conversations', [ConversationsController::class, 'index'])->name('conversations.index');
     Route::post('/conversations', [ConversationsController::class, 'store'])->name('conversations.store');
-
+    
     Route::get('/conversations/{id}/listen', [ConversationsController::class, 'listen'])->name('conversations.listen');
     Route::get('/conversations/{id}/check-expired', [ConversationsController::class, 'checkExpired'])->name('conversations.checkExpired');
     Route::get('/conversations/{conversation}/messages', [ConversationMessagesController::class, 'store'])->name('conversationMessages.store');
-
+    
     Route::post('/conversations/{id}/complete', [ConversationsController::class, 'complete'])->name('conversations.complete');
     Route::post('/conversations/{id}/cancel', [ConversationsController::class, 'cancel'])->name('conversations.cancel');
+    Route::delete('/conversations/{conversation}', [ConversationsController::class, 'destroy'])->name('conversations.destroy');
     Route::post('/conversations/{conversation}/messages', [ConversationMessagesController::class, 'store'])->name('conversationMessages.store');
     Route::post('/conversations/{conversation}/update-last-activity', [ConversationsController::class, 'updateLastActivity'])
     ->name('conversations.updateLastActivity');
+    
     Route::get('/conversations/{id}', [ConversationsController::class, 'show'])->name('conversations.show');
+
 });
 
 require __DIR__.'/auth.php';

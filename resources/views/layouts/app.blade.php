@@ -11,12 +11,30 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     @stack('styles')
 
+    <!-- Custom CSS -->
+    <style>
+        .navbar {
+            background-color: #343a40; /* ダークテーマの背景色 */
+        }
+        .navbar-brand, .nav-link {
+            color: #ffffff !important; /* 白文字 */
+        }
+        .navbar-brand:hover, .nav-link:hover {
+            color: #d1d1d1 !important; /* ホバー時の色 */
+        }
+        .footer {
+            background-color: #343a40;
+            color: #ffffff;
+            padding: 10px 0;
+        }
+    </style>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     @stack('head-scripts')
 </head>
 <body>
-    <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
+    <nav class="navbar navbar-expand-md navbar-dark shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="{{ url('/') }}">
                 {{ config('app.name', 'LuminaMind') }}
@@ -79,7 +97,7 @@
         </div>
     </main>
 
-    <footer class="mt-auto py-3 bg-light">
+    <footer class="footer mt-auto py-3 bg-dark text-white">
         <div class="container text-center">
             <span class="text-muted">&copy; {{ date('Y') }} {{ config('app.name', 'LuminaMind') }}. All rights reserved.</span>
         </div>

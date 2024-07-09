@@ -32,6 +32,7 @@
         box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         transition: all 0.3s ease;
         border: none;
+        position: relative;
     }
     .card:hover {
         transform: translateY(-5px);
@@ -41,9 +42,23 @@
         border-radius: 50px;
         padding: 8px 15px;
     }
+    .delete-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        color: var(--primary-orange);
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+    .delete-button:hover {
+        color: #e74c3c;
+    }
     h1, h2 {
         color: var(--primary-blue);
     }
+    
 </style>
 
 <div class="container py-5">
@@ -74,6 +89,8 @@
                                 <span class="badge bg-primary" style="background-color: var(--primary-blue) !important;">進行中</span>
                             @elseif($conversation->status === App\Models\Conversation::STATUS_COMPLETED)
                                 <span class="badge bg-success" style="background-color: var(--primary-green) !important;">完了</span>
+                            @elseif($conversation->status === App\Models\Conversation::STATUS_CANCELED)
+                                <span class="badge bg-cancel" style="background-color: var(--primary-orange) !important;">キャンセル</span>
                             @else
                                 <span class="badge bg-secondary">{{ $conversation->status }}</span>
                             @endif
@@ -83,6 +100,31 @@
                             @if($conversation->status === App\Models\Conversation::STATUS_IN_PROGRESS)
                                 <a href="{{ route('conversations.listen', $conversation->id) }}" class="gradient-button btn rounded-pill">対話を続ける</a>
                             @endif
+                            <!-- 削除ボタン -->
+                            <button type="button" class="delete-button" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $conversation->id }}">✖️</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 削除確認モーダル -->
+            <div class="modal fade" id="deleteModal{{ $conversation->id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ $conversation->id }}" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="deleteModalLabel{{ $conversation->id }}">削除確認</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            本当にこの対話を削除しますか？
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                            <form action="{{ route('conversations.destroy', $conversation->id) }}" method="POST">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger">削除</button>
+                            </form>
                         </div>
                     </div>
                 </div>
