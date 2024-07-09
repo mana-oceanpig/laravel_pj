@@ -13,20 +13,42 @@
 
     <!-- Custom CSS -->
     <style>
-        .navbar {
-            background-color: #343a40; /* ダークテーマの背景色 */
-        }
-        .navbar-brand, .nav-link {
-            color: #ffffff !important; /* 白文字 */
-        }
-        .navbar-brand:hover, .nav-link:hover {
-            color: #d1d1d1 !important; /* ホバー時の色 */
-        }
-        .footer {
-            background-color: #343a40;
-            color: #ffffff;
-            padding: 10px 0;
-        }
+    :root {
+        --primary-blue: #3498db;
+        --primary-green: #2ecc71;
+        --primary-orange: #f39c12;
+        --light-bg: #ecf0f1;
+    }
+    body {
+        background-color: var(--light-bg);
+    }
+    .navbar {
+        background-color: #343a40;
+    }
+    .navbar-brand, .nav-link {
+        color: #ffffff !important;
+    }
+    .navbar-brand:hover, .nav-link:hover {
+        color: #d1d1d1 !important;
+    }
+    .footer {
+        background-color: #343a40;
+        color: #ffffff;
+        padding: 10px 0;
+    }
+    .gradient-button {
+        background: linear-gradient(45deg, var(--primary-blue), var(--primary-green));
+        border: none;
+        color: white;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        padding: 10px 20px;
+        border-radius: 50px;
+    }
+    .gradient-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 7px 14px rgba(50, 50, 93, .1), 0 3px 6px rgba(0, 0, 0, .08);
+    }
     </style>
 
     <!-- Scripts -->
@@ -45,6 +67,7 @@
 
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                 <!-- Left Side Of Navbar -->
+                @auth
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('conversations.index') }}">対話一覧</a>
@@ -53,28 +76,44 @@
                         <a class="nav-link" href="{{ route('conversations.start') }}">新しい対話を始める</a>
                     </li>
                 </ul>
+                @endauth
 
                 <!-- Right Side Of Navbar -->
                 <ul class="navbar-nav ms-auto">
-                    <!-- Authentication Links -->
-                    @if (Route::has('login'))
-                        @auth
-                            <li class="nav-item">
-                                <a href="{{ url('/profile') }}" class="nav-link">プロフィール</a>
-                            </li>
-                        @else
-                            <li class="nav-item">
-                                <a href="{{ route('login') }}" class="nav-link">ログイン</a>
-                            </li>
+    <!-- Authentication Links -->
+    @guest
+        @if (Route::has('login'))
+            <li class="nav-item">
+                <a href="{{ route('login') }}" class="nav-link">ログイン</a>
+            </li>
+        @endif
 
-                            @if (Route::has('register'))
-                                <li class="nav-item">
-                                    <a href="{{ route('register') }}" class="nav-link">新規登録</a>
-                                </li>
-                            @endif
-                        @endauth
-                    @endif
-                </ul>
+        @if (Route::has('register'))
+            <li class="nav-item">
+                <a href="{{ route('register') }}" class="nav-link">新規登録</a>
+            </li>
+        @endif
+    @else
+        <li class="nav-item dropdown">
+            <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
+                {{ Auth::user()->name }}
+            </a>
+
+            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                <a href="{{ url('/profile') }}" class="dropdown-item">プロフィール</a>
+                <a class="dropdown-item" href="{{ route('logout') }}"
+                   onclick="event.preventDefault();
+                                 document.getElementById('logout-form').submit();">
+                    {{ __('ログアウト') }}
+                </a>
+
+                <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                    @csrf
+                </form>
+            </div>
+        </li>
+    @endguest
+</ul>
             </div>
         </div>
     </nav>
