@@ -22,12 +22,14 @@ class ConversationsController extends Controller
 
     public function index()
     {
-        $conversations = Conversation::all();
+        $user = auth()->user();
+        $conversations = $user->conversations()->orderBy('last_activity_at', 'desc')->get();
         return view('conversations.index', compact('conversations'));
     }
 
     public function show($id)
     {
+        $conversation = auth()->user()->conversations()->findOrFail($id);
         try {
             $conversation = Conversation::with('user', 'messages.user')->findOrFail($id);
         } catch (ModelNotFoundException $e) {
@@ -41,6 +43,7 @@ class ConversationsController extends Controller
 
     public function listen($id)
     {
+        $conversation = auth()->user()->conversations()->findOrFail($id);
         $conversation = Conversation::findOrFail($id);
         if ($conversation->status === Conversation::STATUS_IN_PROGRESS) {
             $conversation->last_activity_at = Carbon::now();
@@ -97,8 +100,9 @@ class ConversationsController extends Controller
     }
     public function destroy(Conversation $conversation)
     {
-    $conversation->delete();
-    return redirect()->route('conversations.index')->with('success', '対話が削除されました。');
+        $conversation = auth()->user()->conversations()->findOrFail($id);
+        $conversation->delete();
+        return redirect()->route('conversations.index')->with('success', '対話が削除されました。');
     }
 
 }
