@@ -7,6 +7,8 @@ use OpenAI;
 use App\Models\Conversation;
 use App\Models\ConversationMessage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Config;
+use Carbon\Carbon;
 
 class OpenAIController extends Controller
 {
@@ -14,45 +16,161 @@ class OpenAIController extends Controller
 
     public function __construct()
     {
-        $this->client = OpenAI::client(env('OPEN_AI_SECRET_KEY'));
+        $this->client = OpenAI::client(Config::get('services.openai.secret_key'));
     }
 
     public function sendMessage(Request $request)
     {
-        $request->validate([
-            'message' => 'required|string',
+        try {
+            $request->validate([
+                'message' => 'required|string',
+                'conversation_id' => 'nullable|integer',
+            ]);
+
+            $conversationId = $request->input('conversation_id');
+            $message = $request->input('message');
+            $userId = auth()->id();
+
+            if (!$conversationId) {
+                $conversation = $this->createNewConversation($userId);
+            } else {
+                $conversation = Conversation::findOrFail($conversationId);
+                $conversation->checkAndUpdateExpired();
+                if ($conversation->status !== Conversation::STATUS_IN_PROGRESS) {
+                    return response()->json(['error' => 'This conversation has ended.'], 400);
+                }
+            }
+
+            $this->saveMessage($conversation->id, $message, 'user');
+
+            $response = $this->getOpenAIResponse($conversation, $message);
+
+            if (strtolower($message) === '対話を完了') {
+                $this->completeConversation($conversation);
+                return response()->json([
+                    'message' => '会話を終了しました。サマリーを生成中です。',
+                    'conversation_id' => $conversation->id,
+                    'status' => 'completed'
+                ]);
+            }
+
+            $conversation->last_activity_at = Carbon::now();
+            $conversation->save();
+
+            return response()->json([
+                'message' => $response,
+                'conversation_id' => $conversation->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in sendMessage: ' . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while processing your request.'], 500);
+        }
+    }
+
+    private function createNewConversation($userId)
+    {
+        return Conversation::create([
+            'user_id' => $userId,
+            'status' => Conversation::STATUS_IN_PROGRESS,
+            'last_activity_at' => Carbon::now(),
+            'agent_status' => Conversation::AGENT_STATUS_THINKING,
+        ]);
+    }
+
+    private function getOpenAIResponse(Conversation $conversation, $message)
+    {
+        $threadId = $conversation->thread_id;
+
+        if (!$threadId) {
+            $thread = $this->client->threads()->create();
+            $conversation->thread_id = $thread->id;
+            $conversation->save();
+            $threadId = $thread->id;
+        }
+
+        $this->client->threads()->messages()->create($threadId, [
+            'role' => 'user',
+            'content' => $message,
         ]);
 
-        $assistantId = env('OPEN_AI_ASSISTANT_ID');
+        $conversation->setAgentStatusThinking();
 
-        // Create a new conversation thread
-        $run = $this->client->threads()->createAndRun([
-            'assistant_id' => $assistantId,
-            'thread' => [
-                'messages' => [
-                    [
-                        'role' => 'user',
-                        'content' => $request->input('message'),
-                    ],
-                ],
-            ],
+        $run = $this->client->threads()->runs()->create($threadId, [
+            'assistant_id' => Config::get('services.openai.assistant_id'),
         ]);
 
-        // Wait for completion of the job
-        $isCompleted = $this->waitUntilRunCompleted($run->threadId, $run->id);
+        $isCompleted = $this->waitUntilRunCompleted($threadId, $run->id);
         if (!$isCompleted) {
             throw new \Exception('Failed to complete OpenAI job');
         }
 
-        // Retrieve and handle response
-        $response = $this->handleOpenAIResponse($run->threadId);
+        $response = $this->getLatestAssistantMessage($threadId);
 
-        return response()->json(['message' => $response]);
+        $this->saveMessage($conversation->id, $response, 'assistant');
+        $conversation->setAgentStatusReacted();
+
+        return $response;
     }
 
-    private function handleOpenAIResponse($threadId)
+    private function completeConversation(Conversation $conversation)
     {
-        // Retrieve messages from the thread
+        // 会話を完了状態に設定
+        $conversation->markAsCompleted();
+    
+        // エージェントのステータスを更新
+        $conversation->setAgentStatusReacted();
+    
+        // サマリー生成ジョブをディスパッチ
+        GenerateConversationSummaryJob::dispatch($conversation);
+    }
+
+    private function generateAndSaveSummary(Conversation $conversation)
+    {
+        $threadId = $conversation->thread_id;
+    
+        // サマリー生成メッセージを送信
+        $this->client->threads()->messages()->create($threadId, [
+            'role' => 'user',
+            'content' => 'Please provide a summary of our conversation.',
+        ]);
+        Log::info('Summary request sent to thread ID: ' . $threadId);
+    
+        // サマリー生成リクエストを送信
+        $run = $this->client->threads()->runs()->create($threadId, [
+            'assistant_id' => Config::get('services.openai.assistant_id'),
+        ]);
+        Log::info('Run request sent for thread ID: ' . $threadId);
+    
+        // サマリー生成の完了を待機
+        $isCompleted = $this->waitUntilRunCompleted($threadId, $run->id);
+        if (!$isCompleted) {
+            Log::error('Failed to generate summary for conversation: ' . $conversation->id);
+            return;
+        }
+        Log::info('Summary generation completed for thread ID: ' . $threadId);
+    
+        // 最新のサマリーメッセージを取得
+        $summaryMessage = $this->getLatestAssistantMessage($threadId);
+        Log::info('Retrieved summary message for conversation ID: ' . $conversation->id);
+    
+        // サマリーメッセージを保存
+        ConversationMessage::create([
+            'conversation_id' => $conversation->id,
+            'message' => $summaryMessage,
+            'role_id' => 2, // assistant role
+            'summary' => true, // サマリーであることを示す
+            'is_hidden' => false,
+        ]);
+        Log::info('Summary message saved for conversation ID: ' . $conversation->id);
+    
+        // サマリーが生成されたことを Conversation モデルに記録
+        $conversation->summary_generated_at = now();
+        $conversation->save();
+        Log::info('Summary generation time saved for conversation ID: ' . $conversation->id);
+    }
+
+    private function getLatestAssistantMessage($threadId)
+    {
         $messages = $this->client->threads()->messages()->list($threadId, [
             'order' => 'desc',
             'limit' => 1,
@@ -61,23 +179,7 @@ class OpenAIController extends Controller
         foreach ($messages->data as $message) {
             foreach ($message->content as $content) {
                 if ($content->type === 'text') {
-                    $messageText = $content->text->value;
-
-                    // Check if it's a 'bye' message
-                    if (strtolower($messageText) === 'bye') {
-                        return '会話を終了しました。';
-                    }
-
-                    // Check if it's a 'complete' message
-                    if (strtolower($messageText) === '対話を完了') {
-                        // Update conversation and save summary
-                        $conversationId = $message->conversation_id;
-                        $conversation = Conversation::findOrFail($conversationId);
-                        $this->saveSummary($conversation);
-                        return '会話を完了しました。';
-                    }
-
-                    return $messageText;
+                    return $content->text->value;
                 }
             }
         }
@@ -85,41 +187,29 @@ class OpenAIController extends Controller
         return 'No response from OpenAI';
     }
 
-    private function saveSummary($conversation)
+    private function saveMessage($conversationId, $message, $role)
     {
-        // Generate summary here (example: concatenate messages)
-        $summaryMessage = $this->generateSummary($conversation);
-
-        // Save summary to ConversationMessagesTable
-        $summary = new ConversationMessage();
-        $summary->conversation_id = $conversation->id;
-        $summary->message = $summaryMessage;
-        $summary->role_id = 2; // Assuming this is the agent role
-        $summary->summary = true; // Flag for summary
-        $summary->save();
-
-        // Update agent_status to 'reacted'
-        $conversation->agent_status = 'reacted';
-        $conversation->save();
-    }
-
-    private function generateSummary($conversation)
-    {
-        // Implement logic to generate summary from conversation messages
-        return 'Summary generated here';
+        ConversationMessage::create([
+            'conversation_id' => $conversationId,
+            'message' => $message,
+            'role_id' => $role === 'user' ? 1 : 2,
+            'is_hidden' => false,
+        ]);
     }
 
     private function waitUntilRunCompleted($threadId, $runId)
     {
-        $count = 0;
-        do {
-            sleep(3);
+        $maxAttempts = Config::get('services.openai.max_attempts', 10);
+        $attemptDelay = Config::get('services.openai.attempt_delay', 3);
+
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            sleep($attemptDelay);
             $run = $this->client->threads()->runs()->retrieve($threadId, $runId);
             if ($run->status === 'completed') {
                 return true;
             }
-            $count++;
-        } while ($count < 5);
+        }
+
         return false;
     }
 }
