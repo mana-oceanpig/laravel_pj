@@ -100,7 +100,6 @@ class ConversationsController extends Controller
     }
     public function destroy(Conversation $conversation)
     {
-        $conversation = auth()->user()->conversations()->findOrFail($id);
         $conversation->delete();
         return redirect()->route('conversations.index')->with('success', '対話が削除されました。');
     }

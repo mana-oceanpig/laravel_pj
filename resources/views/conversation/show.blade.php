@@ -68,7 +68,6 @@
 
 <div class="container py-4">
     <div class="text-center mb-4">
-        <img src="{{ asset('path/to/your/logo.png') }}" alt="Logo" class="logo">
         <h1 class="mb-3">対話詳細 - ID: {{ $conversation->id }}</h1>
     </div>
     

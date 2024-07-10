@@ -96,7 +96,7 @@
                             @endif
                         </p>
                         <div class="d-grid gap-2 mt-3">
-                            <a href="{{ route('conversations.show', $conversation->id) }}" class="btn btn-outline-primary rounded-pill" style="color: var(--primary-blue); border-color: var(--primary-blue);">詳細を見る</a>
+                            <a href="{{ route('conversations.show', $conversation->id) }}" class="btn btn-outline-primary rounded-pill" style="color: var(--primary-blue); bcd cm-color: var(--primary-blue);">詳細を見る</a>
                             @if($conversation->status === App\Models\Conversation::STATUS_IN_PROGRESS)
                                 <a href="{{ route('conversations.listen', $conversation->id) }}" class="gradient-button btn rounded-pill">対話を続ける</a>
                             @endif
