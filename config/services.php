@@ -24,6 +24,11 @@ return [
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
+    
+    'openai' => [
+        'secret_key' => env('OPEN_AI_SECRET_KEY'),
+        'assistant_id' => env('OPEN_AI_ASSISTANT_ID'),
+    ],
 
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
