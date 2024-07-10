@@ -74,12 +74,12 @@ class TestOpenAiAssistant extends Command
         }
         $threadId = $run->threadId;
 
+        // communications between the user and the agent
         while (true) {
 
             // user message
             $message = $this->output->ask('Enter message. To quit type "bye".');
             if ($message === 'bye') {
-                $this->output->success('See you! Have a nice day!');
                 break;
             }
 
@@ -112,6 +112,39 @@ class TestOpenAiAssistant extends Command
                     if ($content['text'] !== null) {
                         $this->info($content['text']['value']);
                     }
+                }
+            }
+        }
+
+        // asking the agent to summarize
+        $client->threads()->messages()->create($threadId, [
+            'content' => '今までの会話の内容をビジネスライクに要約してください',
+            'role' => 'user',
+        ]);
+        $run = $client->threads()->runs()->create($threadId, [
+            'assistant_id' => $assistantId,
+        ]);
+        $this->line('Generating summary of the conversation');
+
+        // waiting until the job has been done
+        $isCompleted = $this->waitUntilRunCompleted($client, $threadId, $run->id);
+        if (! $isCompleted) {
+            $this->output->error('Failed to complete run, abort!');
+            exit();
+        }
+
+        // fetching message
+        $messages = $client->threads()->messages()->list(
+            $threadId,
+            [
+                'order' => 'desc',
+                'limit' => 1,
+            ]
+        );
+        foreach ($messages->data as $message) {
+            foreach ($message->content as $content) {
+                if ($content['text'] !== null) {
+                    $this->output->success($content['text']['value']);
                 }
             }
         }
