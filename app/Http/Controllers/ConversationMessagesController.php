@@ -24,6 +24,7 @@ class ConversationMessagesController extends Controller
             'conversation_id' => 'required|exists:conversations,id',
             'message' => 'required|string',
         ]);
+        
         $user_id = Auth::id();
         $role_id = 1; // Assuming this is the user's role ID
 
@@ -48,7 +49,7 @@ class ConversationMessagesController extends Controller
         $responseMessage->message = $response;
         $responseMessage->role_id = 2; // Assuming this is the agent's role ID
         $responseMessage->save();
-
+        
         // Check if the response indicates the end of conversation
         if (Str::contains(strtolower($response), 'bye')) {
             $conversation->agent_status = 'reacted';

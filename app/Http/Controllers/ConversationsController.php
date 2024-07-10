@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Conversation;
 use App\Models\ConversationMessage;
+use App\Http\Controllers\OpenAIController;
+use App\Jobs\GenerateConversationSummaryJob;
 use OpenAI;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,12 +16,12 @@ use Carbon\Carbon;
 class ConversationsController extends Controller
 {
     private $client;
+    protected $openAIController;
 
-    public function __construct()
+    public function __construct(OpenAIController $openAIController = null)
     {
-        $this->client = OpenAI::client(env('OPEN_AI_SECRET_KEY'));
+        $this->openAIController = $openAIController ?? app(OpenAIController::class);
     }
-
     public function index()
     {
         $user = auth()->user();
@@ -67,23 +69,37 @@ class ConversationsController extends Controller
         ]);
         return redirect()->route('conversations.listen', $conversation->id);
     }
-    public function complete(Request $request, $id)
+        public function complete(Request $request, $id)
     {
         $conversation = Conversation::findOrFail($id);
+        $user_id = Auth::id();
 
-        // If conversation is already completed
+        if ($conversation->user_id !== $user_id) {
+            throw new \Exception('You are not allowed to access this conversation');
+        }
+
         if ($conversation->status === Conversation::STATUS_COMPLETED) {
             return redirect()->route('conversations.show', $id)->with('warning', '対話は既に完了しています。');
         }
 
-        // Complete conversation
         $conversation->status = Conversation::STATUS_COMPLETED;
+        $conversation->agent_status = 'reacted';
         $conversation->last_activity_at = Carbon::now();
         $conversation->save();
 
-        return redirect()->route('conversations.show', $id)->with('success', '対話が完了しました。');
+        try {
+            $openAIController = app(OpenAIController::class);
+            $summaryGenerated = $openAIController->generateAndSaveSummary($conversation);
+            
+            Log::info('Summary generated and saved successfully for conversation: ' . $conversation->id);
+            return redirect()->route('conversations.show', $id)->with('success', '対話が完了しました。サマリーが生成されました。');
+        } catch (\Exception $e) {
+            Log::error('Error generating or saving summary for conversation ' . $conversation->id . ': ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return redirect()->route('conversations.show', $id)->with('error', '対話は完了しましたが、サマリーの生成中にエラーが発生しました: ' . $e->getMessage());
+        }
     }
-
+    
     public function cancel(Request $request, $id)
     {
         $conversation = Conversation::findOrFail($id);

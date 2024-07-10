@@ -16,7 +16,8 @@ class OpenAIController extends Controller
 
     public function __construct()
     {
-        $this->client = OpenAI::client(Config::get('services.openai.secret_key'));
+        $apiKey = env('OPEN_AI_SECRET_KEY') ?? throw new \Exception('OpenAI API key is not set');
+        $this->client = OpenAI::client($apiKey);
     }
 
     public function sendMessage(Request $request)
@@ -124,67 +125,100 @@ class OpenAIController extends Controller
         GenerateConversationSummaryJob::dispatch($conversation);
     }
 
-    private function generateAndSaveSummary(Conversation $conversation)
+       public function generateAndSaveSummary(Conversation $conversation)
     {
+        Log::info('Starting summary generation for conversation: ' . $conversation->id);
+        
         $threadId = $conversation->thread_id;
-    
-        // サマリー生成メッセージを送信
-        $this->client->threads()->messages()->create($threadId, [
-            'role' => 'user',
-            'content' => 'Please provide a summary of our conversation.',
-        ]);
-        Log::info('Summary request sent to thread ID: ' . $threadId);
-    
-        // サマリー生成リクエストを送信
-        $run = $this->client->threads()->runs()->create($threadId, [
-            'assistant_id' => Config::get('services.openai.assistant_id'),
-        ]);
-        Log::info('Run request sent for thread ID: ' . $threadId);
-    
-        // サマリー生成の完了を待機
-        $isCompleted = $this->waitUntilRunCompleted($threadId, $run->id);
-        if (!$isCompleted) {
-            Log::error('Failed to generate summary for conversation: ' . $conversation->id);
-            return;
+
+        if (!$threadId) {
+            Log::error('No thread ID found for conversation: ' . $conversation->id);
+            throw new \Exception('No thread ID found for conversation');
         }
-        Log::info('Summary generation completed for thread ID: ' . $threadId);
-    
-        // 最新のサマリーメッセージを取得
-        $summaryMessage = $this->getLatestAssistantMessage($threadId);
-        Log::info('Retrieved summary message for conversation ID: ' . $conversation->id);
-    
-        // サマリーメッセージを保存
-        ConversationMessage::create([
-            'conversation_id' => $conversation->id,
-            'message' => $summaryMessage,
-            'role_id' => 2, // assistant role
-            'summary' => true, // サマリーであることを示す
-            'is_hidden' => false,
-        ]);
-        Log::info('Summary message saved for conversation ID: ' . $conversation->id);
-    
-        // サマリーが生成されたことを Conversation モデルに記録
-        $conversation->summary_generated_at = now();
-        $conversation->save();
-        Log::info('Summary generation time saved for conversation ID: ' . $conversation->id);
+
+        try {
+            // サマリー生成メッセージを送信
+            $message = $this->client->threads()->messages()->create($threadId, [
+                'role' => 'user',
+                'content' => '今までの会話の内容を15文字以内で要約し、タイトルをつけてください',
+            ]);
+            Log::info('Summary request sent to thread ID: ' . $threadId . ', Message ID: ' . $message->id);
+
+            // サマリー生成リクエストを送信
+            $run = $this->client->threads()->runs()->create($threadId, [
+                'assistant_id' => Config::get('services.openai.assistant_id'),
+            ]);
+            Log::info('Run request sent for thread ID: ' . $threadId . ', Run ID: ' . $run->id);
+
+            // サマリー生成の完了を待機
+            $isCompleted = $this->waitUntilRunCompleted($threadId, $run->id);
+            if (!$isCompleted) {
+                throw new \Exception('Failed to generate summary: Run not completed');
+            }
+            Log::info('Summary generation completed for thread ID: ' . $threadId . ', Run ID: ' . $run->id);
+
+            // 最新のサマリーメッセージを取得
+            $summaryMessage = $this->getLatestAssistantMessage($threadId);
+            Log::info('Retrieved summary message for conversation ID: ' . $conversation->id . ', Message: ' . ($summaryMessage ?? 'No message retrieved'));
+
+            if ($summaryMessage) {
+                // サマリーメッセージを保存
+                $message = ConversationMessage::create([
+                    'conversation_id' => $conversation->id,
+                    'message' => $summaryMessage,
+                    'role_id' => 2, // assistant role
+                    'summary' => true, // サマリーであることを示す
+                    'is_hidden' => false,
+                ]);
+                Log::info('Summary message saved for conversation ID: ' . $conversation->id . ', Message ID: ' . $message->id);
+
+                // updated_atを更新することでサマリー生成時刻を記録
+                $conversation->touch();
+                Log::info('Conversation updated_at set to now for conversation ID: ' . $conversation->id);
+
+                return true;
+            } else {
+                Log::error('No summary message retrieved for conversation ID: ' . $conversation->id);
+                return false;
+            }
+        } catch (\Exception $e) {
+            Log::error('Error in generateAndSaveSummary: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            throw $e;
+        }
     }
 
-    private function getLatestAssistantMessage($threadId)
+        private function getLatestAssistantMessage($threadId)
     {
-        $messages = $this->client->threads()->messages()->list($threadId, [
-            'order' => 'desc',
-            'limit' => 1,
-        ]);
+        try {
+            $messages = $this->client->threads()->messages()->list($threadId, [
+                'order' => 'desc',
+                'limit' => 1,
+            ]);
 
-        foreach ($messages->data as $message) {
-            foreach ($message->content as $content) {
-                if ($content->type === 'text') {
-                    return $content->text->value;
+            Log::info('Retrieved messages: ' . json_encode($messages));
+
+            if (is_object($messages) && property_exists($messages, 'data') && is_array($messages->data)) {
+                foreach ($messages->data as $message) {
+                    if (is_object($message) && property_exists($message, 'role') && $message->role === 'assistant') {
+                        if (property_exists($message, 'content') && is_array($message->content)) {
+                            foreach ($message->content as $content) {
+                                if (is_object($content) && property_exists($content, 'type') && $content->type === 'text') {
+                                    return $content->text->value;
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        }
 
-        return 'No response from OpenAI';
+            Log::error('No valid assistant message found in the response');
+            return null;
+        } catch (\Exception $e) {
+            Log::error('Error in getLatestAssistantMessage: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return null;
+        }
     }
 
     private function saveMessage($conversationId, $message, $role)
@@ -197,7 +231,7 @@ class OpenAIController extends Controller
         ]);
     }
 
-    private function waitUntilRunCompleted($threadId, $runId)
+        private function waitUntilRunCompleted($threadId, $runId)
     {
         $maxAttempts = Config::get('services.openai.max_attempts', 10);
         $attemptDelay = Config::get('services.openai.attempt_delay', 3);
@@ -205,11 +239,16 @@ class OpenAIController extends Controller
         for ($i = 0; $i < $maxAttempts; $i++) {
             sleep($attemptDelay);
             $run = $this->client->threads()->runs()->retrieve($threadId, $runId);
+            Log::info('Run status check: ' . $run->status . ' for Run ID: ' . $runId);
             if ($run->status === 'completed') {
                 return true;
+            } elseif ($run->status === 'failed') {
+                Log::error('Run failed for thread ID: ' . $threadId . ', Run ID: ' . $runId);
+                return false;
             }
         }
 
+        Log::error('Timeout waiting for run completion. Thread ID: ' . $threadId . ', Run ID: ' . $runId);
         return false;
     }
 }
