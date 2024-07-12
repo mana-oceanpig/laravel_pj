@@ -29,9 +29,25 @@
     .card {
         border-radius: 15px;
         overflow: hidden;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
         border: none;
         margin-bottom: 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1.25rem;
+    }
+    
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: bold;
+        margin-bottom: 0.75rem;
+    }
+    
+    .card-text {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
     }
     h1, h2 {
         color: var(--primary-blue);
@@ -52,54 +68,103 @@
     .message-user {
         background-color: var(--primary-blue);
         color: white;
-        align-self: flex-start;
+        align-self: flex-end;
     }
     .message-counselor {
+        max-width: 50%;
         background-color: #f1f1f1;
         color: #333;
-        align-self: flex-end;
+        align-self: flex-start;
     }
     .badge {
         padding: 0.5em 1em;
         border-radius: 20px;
         font-weight: normal;
     }
+    .summary-container {
+        margin: 0 auto;
+    }
+    
+    .summary-text {
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #555;
+    }
+    
+    @media (min-width: 768px) {
+        .summary-container {
+            max-width: 70%;
+            align-self: flex-start;
+        }
+        .card-text {
+            font-size: 0.875rem;
+        }
+    }
+    
+    @media (min-width: 992px) {
+        .summary-container {
+            max-width: 60%;
+        }
+    }
 </style>
 
 <div class="container py-4">
-    <div class="text-center mb-4">
-        <h1 class="mb-3">対話詳細 - ID: {{ $conversation->id }}</h1>
-    </div>
+    @if ($summaryMessage)
+        @php
+            $summary = $summaryMessage->message;
+            $titleMatch = preg_match('/タイトル：(.+?)(?=\s*要約：|$)/u', $summary, $titleMatches);
+            $summaryMatch = preg_match('/要約：(.+)$/u', $summary, $summaryMatches);
+            
+            $title = $titleMatch ? trim($titleMatches[1]) : '';
+            $summaryText = $summaryMatch ? trim($summaryMatches[1]) : '';
+        @endphp
+        
+        <div class="text-center mb-4">
+            <h1 class="mb-3">{{ $title ?: 'タイトルなし' }}</h1>
+        </div>
+    @else
+        <div class="text-center mb-4">
+            <h1 class="mb-3">タイトル：{{ $conversation->title }}</h1>
+        </div>
+    @endif
     
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">ステータス: 
-                @php
-                    $statusClass = '';
-                    $statusText = '';
-                    switch($conversation->status) {
-                        case 'inProgress':
-                            $statusClass = 'bg-primary';
-                            $statusText = '進行中';
-                            break;
-                        case 'completed':
-                            $statusClass = 'bg-success';
-                            $statusText = '完了';
-                            break;
-                        case 'cancelled':
-                            $statusClass = 'bg-warning';
-                            $statusText = 'キャンセル';
-                            break;
-                        default:
-                            $statusClass = 'bg-secondary';
-                            $statusText = $conversation->status;
-                    }
-                @endphp
-                <span class="badge {{ $statusClass }}">{{ $statusText }}</span>
-            </h5>
-            <p class="card-text">最終アクティビティ: {{ optional($conversation->last_activity_at)->format('Y年m月d日 H:i:s') }}</p>
-            <p class="card-text">作成日時: {{ optional($conversation->created_at)->format('Y年m月d日 H:i:s') }}</p>
-            <p class="card-text">更新日時: {{ optional($conversation->updated_at)->format('Y年m月d日 H:i:s') }}</p>
+    <div class="card mb-4">
+        <div class="card-body d-flex flex-column flex-md-row justify-content-between">
+            <div class="card-details">
+                <h5 class="card-title">ステータス: 
+                    @php
+                        $statusClass = '';
+                        $statusText = '';
+                        switch($conversation->status) {
+                            case 'inProgress':
+                                $statusClass = 'bg-primary';
+                                $statusText = '進行中';
+                                break;
+                            case 'completed':
+                                $statusClass = 'bg-success';
+                                $statusText = '完了';
+                                break;
+                            case 'cancelled':
+                                $statusClass = 'bg-warning';
+                                $statusText = 'キャンセル';
+                                break;
+                            default:
+                                $statusClass = 'bg-secondary';
+                                $statusText = $conversation->status;
+                        }
+                    @endphp
+                    <span class="badge {{ $statusClass }}">{{ $statusText }}</span>
+                </h5>
+                <p class="card-text">最終アクティビティ: {{ optional($conversation->last_activity_at)->format('Y年m月d日 H:i:s') }}</p>
+                <p class="card-text">作成日時: {{ optional($conversation->created_at)->format('Y年m月d日 H:i:s') }}</p>
+                <p class="card-text">更新日時: {{ optional($conversation->updated_at)->format('Y年m月d日 H:i:s') }}</p>
+            </div>
+            @if ($summaryMessage && $summaryText)
+                <div class="mt-3 summary-container">
+                    <h5 class="card-title">今回のサマリ：</h5>
+                    <p class="card-text summary-text">{{ $summaryText }}</p>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -107,11 +172,13 @@
     <div id="messages-container" class="card">
         <div class="card-body d-flex flex-column">
             @foreach($messages as $message)
-                <div class="message {{ $message->role_id == 1 ? 'message-user' : 'message-counselor' }}">
-                    <div><strong>{{ $message->role_id == 1 ? $conversation->user->name : 'カウンセラー' }}</strong></div>
-                    <div>{{ $message->message }}</div>
-                    <div><small class="text-muted">{{ optional($message->created_at)->format('Y年m月d日 H:i:s') }}</small></div>
-                </div>
+                @if(!$message->summary)
+                    <div class="message {{ $message->role_id == 1 ? 'message-user' : 'message-counselor' }}">
+                        <div><strong>{{ $message->role_id == 1 ? $conversation->user->name : 'カウンセラー' }}</strong></div>
+                        <div>{{ $message->message }}</div>
+                        <div><small class="text-muted">{{ optional($message->created_at)->format('Y年m月d日 H:i:s') }}</small></div>
+                    </div>
+                @endif
             @endforeach
         </div>
     </div>
