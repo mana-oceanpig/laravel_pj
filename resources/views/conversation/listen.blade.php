@@ -49,15 +49,25 @@
         border-radius: 10px;
         max-width: 80%;
     }
+    #thinking-message {
+        max-width: 30%;
+        background-color: #f1f1f1;
+        color: #333;
+        align-self: flex-start;
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
     .message-user {
         background-color: var(--primary-blue);
         color: white;
-        align-self: flex-start;
+        align-self: flex-end;
     }
     .message-counselor {
+        max-width: 50%;
         background-color: #f1f1f1;
         color: #333;
-        align-self: flex-end;
+        align-self: flex-start;
     }
     #message-input {
         border-radius: 25px;
@@ -97,15 +107,15 @@
                         <small class="text-muted">{{ $message->created_at->format('Y-m-d H:i:s') }}</small>
                     </div>
                 @endforeach
-                    <div id="thinking-message" class="message message-counselor" style="display: none;">
-                        <div><strong>カウンセラー</strong></div>
-                    <div>...考え中</div>
-                </div>
+            </div>
+            <div id="thinking-message" class="message message-counselor" style="display: none;">
+                <div><strong>カウンセラー</strong></div>
+                <div>...考え中</div>
             </div>
         </div>
     </div>
 
-     <form id="message-form" action="{{ route('conversationMessages.store', ['conversation' => $conversation->id]) }}" method="POST" class="mb-4">
+    <form id="message-form" class="mb-4">
         @csrf
         <input type="hidden" name="conversation_id" value="{{ $conversation->id }}">
         <div class="input-group">
@@ -115,41 +125,115 @@
     </form>
 
     <div class="d-flex justify-content-between">
-        <form action="{{ route('conversations.complete', $conversation->id) }}" method="POST">
-            @csrf
-            <button type="submit" class="btn btn-end rounded-pill px-4 py-2">対話を終了</button>
-        </form>
-        <form action="{{ route('conversations.cancel', $conversation->id) }}" method="POST">
-            @csrf
-            <button type="submit" class="btn btn-cancel rounded-pill px-4 py-2">対話をキャンセル</button>
-        </form>
+        <button id="end-conversation" class="btn btn-end rounded-pill px-4 py-2">対話を終了</button>
+        <button id="cancel-conversation" class="btn btn-cancel rounded-pill px-4 py-2">対話をキャンセル</button>
         <a href="{{ route('conversations.index') }}" class="btn btn-outline-secondary rounded-pill px-4 py-2">対話一覧に戻る</a>
     </div>
 </div>
+
 <script>
-    document.getElementById('message-form').addEventListener('submit', function(event) {
-        event.preventDefault(); // Prevent the default form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const messagesContainer = document.getElementById('messages-container');
+    const thinkingMessage = document.getElementById('thinking-message');
+    const summaryContent = document.getElementById('summary-content');
+    const endConversationButton = document.getElementById('end-conversation');
+    const cancelConversationButton = document.getElementById('cancel-conversation');
 
-        // Show the thinking message
-        document.getElementById('thinking-message').style.display = 'block';
-
-        // Disable the submit button
-        document.querySelector('#message-form button[type="submit"]').disabled = true;
-
-        // Submit the form
-        event.target.submit();
-    });
-
-    // Function to scroll to the bottom of the messages container
     function scrollToBottom() {
-        const messagesContainer = document.getElementById('messages-container');
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    // Scroll to the bottom on page load
-    window.onload = function() {
+    function addMessage(message, isUser = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'message-user' : 'message-counselor'}`;
+        messageDiv.innerHTML = `
+            <div><strong>${isUser ? '{{ $conversation->user->name }}' : 'カウンセラー'}</strong></div>
+            <div>${message}</div>
+            <small class="text-muted">${new Date().toLocaleString()}</small>
+        `;
+        messagesContainer.appendChild(messageDiv);
         scrollToBottom();
-    };
+    }
+
+    messageForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        addMessage(message, true);
+        messageInput.value = '';
+        thinkingMessage.style.display = 'block';
+        scrollToBottom();
+
+        fetch('{{ route('conversationMessages.store', ['conversation' => $conversation->id]) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                conversation_id: {{ $conversation->id }},
+                message: message
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            thinkingMessage.style.display = 'none';
+            if (data.summary) {
+                summaryContent.textContent = data.summary;
+            } else {
+                addMessage(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            thinkingMessage.style.display = 'none';
+            addMessage('エラーが発生しました。もう一度お試しください。');
+        });
+    });
+
+    endConversationButton.addEventListener('click', function() {
+        fetch('{{ route('conversations.complete', $conversation->id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            window.location.href = '{{ route('conversations.show', $conversation->id) }}';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('対話の終了中にエラーが発生しました。');
+        });
+    });
+
+    cancelConversationButton.addEventListener('click', function() {
+        fetch('{{ route('conversations.cancel', $conversation->id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            window.location.href = '{{ route('conversations.show', $conversation->id) }}';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('対話のキャンセル中にエラーが発生しました。');
+        });
+    });
+
+    scrollToBottom();
+});
 </script>
 @endsection
 
