@@ -3,10 +3,10 @@
 @section('content')
 <style>
     :root {
-        --primary-blue: #3498db;
-        --primary-green: #2ecc71;
-        --primary-orange: #f39c12;
-        --light-bg: #ecf0f1;
+    --primary-blue: #3498db;
+    --primary-green: #2ecc71;
+    --primary-orange: #f39c12;
+    --light-bg: #ecf0f1;
     }
     body {
         background-color: var(--light-bg);
@@ -22,10 +22,51 @@
         font-weight: bold;
         transition: all 0.3s ease;
         border-radius: 25px;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
     }
+
     .gradient-button:hover {
         transform: translateY(-2px);
         box-shadow: 0 5px 10px rgba(50, 50, 93, .1), 0 2px 4px rgba(0, 0, 0, .08);
+    }
+
+    .input-group {
+        display: flex;
+        align-items: center;
+        background-color: white;
+        border-radius: 25px;
+        padding: 0.5rem;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .input-group-append {
+        display: flex;
+        align-items: center;
+        margin-left: 0.5rem;
+    }
+
+    .input-group-append .btn {
+        margin-left: 0.5rem;
+    }
+
+    #voice-button,
+    .btn-primary {
+        color: var(--primary-blue);
+        padding: 1rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    #voice-button:hover,
+    .btn-primary:hover {
+        background-color: rgba(52, 152, 219, 0.1);
+    }
+
+    #voice-button.active {
+        background-color: var(--primary-blue);
+        color: white;
     }
     .card {
         border-radius: 15px;
@@ -49,6 +90,11 @@
         border-radius: 10px;
         max-width: 80%;
     }
+    #message-input {
+        border: none;
+        outline: none;
+        flex: 1;
+    }
     #thinking-message {
         max-width: 30%;
         background-color: #f1f1f1;
@@ -69,10 +115,6 @@
         color: #333;
         align-self: flex-start;
     }
-    #message-input {
-        border-radius: 25px;
-        padding: 0.5rem 1rem;
-    }
     .btn-end {
         background: linear-gradient(45deg, var(--primary-green), #27ae60);
         border: none;
@@ -83,20 +125,13 @@
         border: none;
         color: white;
     }
-    #message-input {
-        border-radius: 25px 0 0 25px;
-        padding: 0.5rem 1rem;
-    }
-    .input-group .gradient-button {
-        border-radius: 0 25px 25px 0;
-    }
 </style>
 
 <div class="container py-4">
     <div class="text-center mb-4">
-        <h1 class="mb-3">今日の対話 - ID: {{ $conversation->id }}</h1>
+        <h1 class="mb-3">今日の対話 - {{ now()->format('m月d日') }}</h1>
     </div>
-    
+
     <div class="card mb-4">
         <div class="card-body">
             <div id="messages-container" class="d-flex flex-column">
@@ -119,8 +154,15 @@
         @csrf
         <input type="hidden" name="conversation_id" value="{{ $conversation->id }}">
         <div class="input-group">
-            <input type="text" name="message" id="message-input" class="form-control" required placeholder="メッセージを入力...">
-            <button type="submit" class="gradient-button btn">送信</button>
+            <input type="text" name="message" id="message-input" class="form-control rounded-pill" required placeholder="メッセージを入力...">
+            <div class="input-group-append">
+                <button type="button" id="voice-button" class="btn btn-outline-primary rounded-pill">
+                    <i class="bi bi-mic">️️</i>🎙
+                </button>
+                <button type="submit" class="btn btn-primary rounded-pill">
+                    <i class="bi bi-send"></i>📤️
+                </button>
+            </div>
         </div>
     </form>
 
@@ -140,6 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const summaryContent = document.getElementById('summary-content');
     const endConversationButton = document.getElementById('end-conversation');
     const cancelConversationButton = document.getElementById('cancel-conversation');
+    const voiceButton = document.getElementById('voice-button');
 
     function scrollToBottom() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -156,6 +199,42 @@ document.addEventListener('DOMContentLoaded', function() {
         messagesContainer.appendChild(messageDiv);
         scrollToBottom();
     }
+
+    //音声入力
+    let recognition = null;
+
+    voiceButton.addEventListener('click', function() {
+        if (recognition && recognition.running) {
+            recognition.stop();
+            return;
+        }
+
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+
+            recognition.onstart = function() {
+                voiceButton.classList.add('active');
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                messageInput.value = transcript;
+            };
+
+            recognition.onend = function() {
+                voiceButton.classList.remove('active');
+            };
+
+            recognition.onerror = function(event) {
+                console.error('音声認識中にエラーが発生しました:', event.error);
+                voiceButton.classList.remove('active');
+            };
+
+            recognition.start();
+        } else {
+            alert('ご使用のブラウザは音声入力をサポートしていません。');
+        }
+    });
 
     messageForm.addEventListener('submit', function(event) {
         event.preventDefault();

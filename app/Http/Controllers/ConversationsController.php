@@ -27,18 +27,19 @@ class ConversationsController extends Controller
 
     public function index()
     {
-        $conversations = auth()->user()->conversations()->orderBy('created_at', 'desc')->get();
-        return view('conversations.index', compact('conversations'));
+        $user = Auth::user(); // 認証済みユーザーを取得
+        $conversations = $user->conversations()->orderBy('created_at', 'desc')->get();
+        return view('conversations.index', compact('conversations', 'user'));
     }
     public function show($id)
     {
         try {
             $conversation = Conversation::with(['user', 'messages.user'])->findOrFail($id);
             $messages = $conversation->messages()->orderBy('created_at')->get();
-            
+
             // Load summary message if available
             $summaryMessage = $conversation->messages()->where('summary', true)->first();
-    
+
             return view('conversations.show', compact('conversation', 'messages', 'summaryMessage'));
         } catch (ModelNotFoundException $e) {
             Log::error("Conversation with ID $id not found.");
@@ -61,12 +62,12 @@ class ConversationsController extends Controller
     {
         return view('conversations.start');
     }
-    
+
     public function updateTitle(Request $request, $id)
     {
         $conversation = Conversation::findOrFail($id);
         $summaryMessage = $conversation->messages()->where('summary', true)->first();
-    
+
         if ($summaryMessage) {
             $newSummary = preg_replace('/タイトル：.+?(?=\s*要約：|$)/u', 'タイトル：' . $request->input('title'), $summaryMessage->message);
             $summaryMessage->update(['message' => $newSummary]);
@@ -79,7 +80,7 @@ class ConversationsController extends Controller
                 'role_id' => 2, // システムメッセージのrole_id
             ]);
         }
-    
+
         return response()->json(['success' => true]);
     }
 
@@ -91,6 +92,81 @@ class ConversationsController extends Controller
             'last_activity_at' => Carbon::now(),
         ]);
         return redirect()->route('conversations.listen', $conversation->id);
+    }
+
+    public function claimLoginBonus()
+    {
+        $user = Auth::user();
+        $now = Carbon::now();
+        $lastBonusDate = $user->last_bonus_date ? Carbon::parse($user->last_bonus_date) : null;
+
+        if (!$lastBonusDate || $lastBonusDate->diffInDays($now) >= 1) {
+            // ログインボーナスの付与
+            $bonusPoints = 10;
+            $user->points += $bonusPoints;
+            $user->last_bonus_date = $now;
+
+            // ログインストリークの更新
+            if ($lastBonusDate && $lastBonusDate->diffInDays($now) == 1) {
+                $user->login_streak++;
+            } else {
+                $user->login_streak = 1;
+            }
+
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => "ログインボーナス{$bonusPoints}ptを獲得しました！",
+                'totalPoints' => $user->points,
+                'loginStreak' => $user->login_streak
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => '本日のログインボーナスは既に獲得済みです。',
+            'totalPoints' => $user->points,
+            'loginStreak' => $user->login_streak
+        ]);
+    }
+    public function updateLoginStreak()
+    {
+        $user = Auth::user();
+        $now = Carbon::now();
+        $lastLoginDate = $user->last_login_at ? Carbon::parse($user->last_login_at) : null;
+
+        if (!$lastLoginDate || $lastLoginDate->diffInDays($now) >= 1) {
+            if ($lastLoginDate && $lastLoginDate->diffInDays($now) == 1) {
+                $user->login_streak++;
+            } else {
+                $user->login_streak = 1;
+            }
+
+            $user->last_login_at = $now;
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'loginStreak' => $user->login_streak
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => '今日は既にログイン済みです。',
+            'loginStreak' => $user->login_streak
+        ]);
+    }
+    public function getLoginInfo()
+    {
+        $user = Auth::user();
+        return response()->json([
+            'totalPoints' => $user->points,
+            'loginStreak' => $user->login_streak,
+            'lastBonusDate' => $user->last_bonus_date,
+            'lastLoginAt' => $user->last_login_at
+        ]);
     }
 
     public function complete(Request $request, $id)
@@ -112,19 +188,31 @@ class ConversationsController extends Controller
                 ]);
             }
 
-            $conversation->markAsCompleted();
+            // 状態を完了にする
+            $conversation->status = Conversation::STATUS_COMPLETED;
+            $conversation->save();
 
+            // ポイントを加算
+            $user = Auth::user();
+            $user->points += 10;
+            $user->save();
+
+            Log::info("User ID {$user->id} has been awarded 10 points for completing conversation ID {$conversation->id}. Total points: {$user->points}");
+
+            // サマリーを生成するが、生成に失敗してもポイント加算は維持する
             $summaryGenerated = $this->generateAndSaveSummary($conversation);
 
             if ($summaryGenerated) {
                 return response()->json([
-                    'message' => '対話が完了し、サマリーが生成されました。',
-                    'conversation_id' => $id
+                    'message' => '対話が完了し、10ptを獲得しました！サマリーが生成されました。',
+                    'conversation_id' => $id,
+                    'totalPoints' => $user->points
                 ]);
             } else {
                 return response()->json([
-                    'message' => '対話が完了しましたが、サマリーの生成に失敗しました。',
-                    'conversation_id' => $id
+                    'message' => '対話が完了し、10ptを獲得しましたが、サマリーの生成に失敗しました。',
+                    'conversation_id' => $id,
+                    'totalPoints' => $user->points
                 ]);
             }
         } catch (ModelNotFoundException $e) {
@@ -139,7 +227,7 @@ class ConversationsController extends Controller
     private function generateAndSaveSummary(Conversation $conversation)
     {
         Log::info('Starting summary generation for conversation: ' . $conversation->id);
-        
+
         $threadId = $conversation->thread_id;
 
         if (!$threadId) {
