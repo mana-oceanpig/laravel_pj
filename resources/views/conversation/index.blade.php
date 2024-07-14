@@ -133,6 +133,9 @@
         flex-direction: column;
         padding: 1.5rem;
     }
+    .card-body {
+        padding: 1.25rem;
+    }
     .card:hover {
         transform: translateY(-5px);
         box-shadow: 0 15px 30px rgba(0,0,0,0.15);
@@ -185,12 +188,12 @@
             flex-wrap: wrap;
             justify-content: space-around;
         }
-    
+
         .oasis-container, .talk-button-container, .login-bonus-container {
             width: calc(50% - 1rem);
         }
     }
-    
+
     @media (min-width: 992px) {
         .login-section {
             flex-wrap: nowrap;
@@ -379,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateTitle(event, id) {
         event.preventDefault();
         var newTitle = document.getElementById('new-title-' + id).value;
-        
+
         fetch('{{ route("conversations.updateTitle", ":id") }}'.replace(':id', id), {
             method: 'POST',
             headers: {

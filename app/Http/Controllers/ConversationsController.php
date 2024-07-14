@@ -36,10 +36,10 @@ class ConversationsController extends Controller
         try {
             $conversation = Conversation::with(['user', 'messages.user'])->findOrFail($id);
             $messages = $conversation->messages()->orderBy('created_at')->get();
-            
+
             // Load summary message if available
             $summaryMessage = $conversation->messages()->where('summary', true)->first();
-    
+
             return view('conversations.show', compact('conversation', 'messages', 'summaryMessage'));
         } catch (ModelNotFoundException $e) {
             Log::error("Conversation with ID $id not found.");
@@ -62,12 +62,12 @@ class ConversationsController extends Controller
     {
         return view('conversations.start');
     }
-    
+
     public function updateTitle(Request $request, $id)
     {
         $conversation = Conversation::findOrFail($id);
         $summaryMessage = $conversation->messages()->where('summary', true)->first();
-    
+
         if ($summaryMessage) {
             $newSummary = preg_replace('/タイトル：.+?(?=\s*要約：|$)/u', 'タイトル：' . $request->input('title'), $summaryMessage->message);
             $summaryMessage->update(['message' => $newSummary]);
@@ -80,7 +80,7 @@ class ConversationsController extends Controller
                 'role_id' => 2, // システムメッセージのrole_id
             ]);
         }
-    
+
         return response()->json(['success' => true]);
     }
 
@@ -93,6 +93,7 @@ class ConversationsController extends Controller
         ]);
         return redirect()->route('conversations.listen', $conversation->id);
     }
+
     public function claimLoginBonus()
     {
         $user = Auth::user();
@@ -173,34 +174,34 @@ class ConversationsController extends Controller
         try {
             $conversation = Conversation::findOrFail($id);
             $user_id = Auth::id();
-    
+
             if ($conversation->user_id !== $user_id) {
                 return response()->json([
                     'error' => 'You are not allowed to access this conversation'
                 ], 403);
             }
-    
+
             if ($conversation->status === Conversation::STATUS_COMPLETED) {
                 return response()->json([
                     'warning' => '対話は既に完了しています。',
                     'conversation_id' => $id
                 ]);
             }
-    
+
             // 状態を完了にする
             $conversation->status = Conversation::STATUS_COMPLETED;
             $conversation->save();
-    
+
             // ポイントを加算
             $user = Auth::user();
             $user->points += 10;
             $user->save();
-    
+
             Log::info("User ID {$user->id} has been awarded 10 points for completing conversation ID {$conversation->id}. Total points: {$user->points}");
-    
+
             // サマリーを生成するが、生成に失敗してもポイント加算は維持する
             $summaryGenerated = $this->generateAndSaveSummary($conversation);
-    
+
             if ($summaryGenerated) {
                 return response()->json([
                     'message' => '対話が完了し、10ptを獲得しました！サマリーが生成されました。',
@@ -226,7 +227,7 @@ class ConversationsController extends Controller
     private function generateAndSaveSummary(Conversation $conversation)
     {
         Log::info('Starting summary generation for conversation: ' . $conversation->id);
-        
+
         $threadId = $conversation->thread_id;
 
         if (!$threadId) {

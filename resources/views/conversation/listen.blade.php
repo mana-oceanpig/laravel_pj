@@ -25,12 +25,12 @@
         padding: 0.5rem 1rem;
         cursor: pointer;
     }
-    
+
     .gradient-button:hover {
         transform: translateY(-2px);
         box-shadow: 0 5px 10px rgba(50, 50, 93, .1), 0 2px 4px rgba(0, 0, 0, .08);
     }
-    
+
     .input-group {
         display: flex;
         align-items: center;
@@ -39,17 +39,17 @@
         padding: 0.5rem;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
-    
+
     .input-group-append {
         display: flex;
         align-items: center;
         margin-left: 0.5rem;
     }
-    
+
     .input-group-append .btn {
         margin-left: 0.5rem;
     }
-    
+
     #voice-button,
     .btn-primary {
         color: var(--primary-blue);
@@ -58,12 +58,12 @@
         cursor: pointer;
         transition: background-color 0.3s ease;
     }
-    
+
     #voice-button:hover,
     .btn-primary:hover {
         background-color: rgba(52, 152, 219, 0.1);
     }
-    
+
     #voice-button.active {
         background-color: var(--primary-blue);
         color: white;
@@ -95,7 +95,6 @@
         outline: none;
         flex: 1;
     }
-    
     #thinking-message {
         max-width: 30%;
         background-color: #f1f1f1;
@@ -132,7 +131,7 @@
     <div class="text-center mb-4">
         <h1 class="mb-3">今日の対話 - {{ now()->format('m月d日') }}</h1>
     </div>
-    
+
     <div class="card mb-4">
         <div class="card-body">
             <div id="messages-container" class="d-flex flex-column">
@@ -184,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const endConversationButton = document.getElementById('end-conversation');
     const cancelConversationButton = document.getElementById('cancel-conversation');
     const voiceButton = document.getElementById('voice-button');
-    
+
     function scrollToBottom() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
@@ -200,9 +199,10 @@ document.addEventListener('DOMContentLoaded', function() {
         messagesContainer.appendChild(messageDiv);
         scrollToBottom();
     }
+
     //音声入力
     let recognition = null;
-    
+
     voiceButton.addEventListener('click', function() {
         if (recognition && recognition.running) {
             recognition.stop();
@@ -235,7 +235,6 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('ご使用のブラウザは音声入力をサポートしていません。');
         }
     });
-    
 
     messageForm.addEventListener('submit', function(event) {
         event.preventDefault();
